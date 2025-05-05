@@ -31,6 +31,8 @@ $ git clone https://github.com/Klaus-Schmerz/AkbobadaDownloader_Modernized.git
 $ cd AkbobadaDownloader_Modernized
 ```
 
+Before run the code, Please update `config.toml` appropreately to your conditions by [this](#configuration-file)
+
 Run the code
 ```bash
 $ python run.py
