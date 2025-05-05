@@ -1,0 +1,10 @@
+[[accounts]]
+id = "id1"
+pw = "pw1"
+
+[[accounts]]
+id = "id2"
+pw = "pw2"
+
+[download]
+outdir = "./scores"
