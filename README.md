@@ -42,7 +42,7 @@ $ python run.py
 
 | Variable           | Type | Default | Description                                                          |
 | ------------------ | ---- | ------- | -------------------------------------------------------------------- |
-| `-r`, `--recovery` | Bool | False   | Download the entire score list regardless of the last download score |
+| `-r`, `--recovery` | None |         | Download the entire score list regardless of the last download score |
 | `-b`, `--batch`    | int  | 100     | Amount to be shared when there is a large amount of score            |
 | `-w`, `--workers`  | int  | 10      | Number of asynchronous processes                                     |
 
