@@ -69,7 +69,15 @@ def login(account: Account) -> requests.Session:
     if "JSESSIONID" not in s.cookies:
         raise RuntimeError(f"[{account.id}] 로그인 실패")
     # print(s.cookies)
+    assert_logged_in(s)
     return s
+
+def assert_logged_in(s: requests.Session):
+    r = s.get(REFER_URL, headers=HEADERS, timeout=10, allow_redirects=False, verify=False)
+    if r.status_code in (301, 302, 303, 307, 308):
+        raise RuntimeError(f"로그인 검증 실패(redirect): {r.headers.get('Location')}")
+    if r.status_code != 200:
+        raise RuntimeError(f"로그인 검증 실패: status={r.status_code}")
 
 
 def scrape_scores(s: requests.Session, username: str, recovery: bool = False) -> List[Score]:
@@ -130,22 +138,31 @@ async def async_download(scores: List[Score], s: requests.Session, outdir: str, 
         async def fetch(sc: Score):
             async with sem:
                 await asyncio.sleep(random.uniform(1, 3))
+                url = sc.pdf_url()
 
-                try:
-                    r = await client.get(sc.pdf_url())
-                    if r.status_code == 404:
-                        print(f"[404] {sc.filename()}")
-                        return
+                for attempt in range(6):
+                    try:
+                        r = await client.get(url, follow_redirects=False)
+                        if r.status_code == 404:
+                            await asyncio.sleep(2 ** attempt)
+                            continue
 
-                    r.raise_for_status()
-                    path = os.path.join(outdir, sc.part)
-                    os.makedirs(path, exist_ok=True)
-                    with open(os.path.join(path, sc.filename()), "wb") as f:
-                        f.write(r.content)
-                except httpx.HTTPError as e:
-                    print(f"[ERR] {sc.filename()} → {e}")
-                finally:
-                    await asyncio.sleep(random.uniform(1, 2))
+                        # 로그인 리디렉션 확인
+                        if r.status_code in (301, 302, 303, 307, 308):
+                            raise RuntimeError(f"Redirect to {r.headers.get('Location')}")
+
+                        r.raise_for_status()
+
+                        path = os.path.join(outdir, sc.part)
+                        os.makedirs(path, exist_ok=True)
+                        with open(os.path.join(path, sc.filename()), "wb") as f:
+                            f.write(r.content)
+                    except httpx.HTTPError as e:
+                        print(f"[ERR] {sc.filename()} → {e}")
+                    except Exception as e:
+                        print(f"[ERR] {e}")
+                    finally:
+                        await asyncio.sleep(random.uniform(1, 2))
 
         tasks = [asyncio.create_task(fetch(s)) for s in scores]
         for f in tqdm(asyncio.as_completed(tasks), total=len(tasks), desc=label):
